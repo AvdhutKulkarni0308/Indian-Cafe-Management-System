@@ -141,50 +141,57 @@ function initMenuCategories() {
 
 // ================= Display Items =================
 async function displayMenuItems(category) {
+  let dbMenuItems = [];
   try {
-    // Fetch fresh menu data from backend
     const response = await fetch('http://localhost:5000/menu');
-    const dbMenuItems = await response.json();
-    
-    menuItemsContainer.innerHTML = '';
-    
-    // Combine static menu items with database items
-    const allItems = [
-      ...menuCategories.find(cat => cat.title === category.title).items,
-      ...dbMenuItems.filter(item => item.category === category.title)
-    ];
-
-    allItems.forEach(item => {
-      const itemElement = document.createElement('div');
-      itemElement.className = 'bg-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow';
-      itemElement.innerHTML = `
-        <div class="flex justify-between items-start mb-3">
-          <h3 class="text-xl font-semibold text-gray-900">${item.name}</h3>
-          <span class="text-lg font-medium text-orange-700">₹${item.price}</span>
-        </div>
-        <p class="text-gray-600 text-sm">${item.description}</p>
-        <button class="add-to-cart-btn mt-4 w-full bg-orange-50 text-orange-700 py-2 rounded-md hover:bg-orange-100 transition-colors" 
-          data-id="${item._id || item.id}" 
-          data-name="${item.name}" 
-          data-price="${item.price}">
-          Add to Cart
-        </button>
-      `;
-      menuItemsContainer.appendChild(itemElement);
-    });
-
-    // Add event listeners for Add to Cart buttons
-    document.querySelectorAll('.add-to-cart-btn').forEach(button => {
-      button.addEventListener('click', () => {
-        const id = button.getAttribute('data-id');
-        const name = button.getAttribute('data-name');
-        const price = parseFloat(button.getAttribute('data-price'));
-        addToCart({ id, name, price });
-      });
-    });
+    if (response.ok) {
+      dbMenuItems = await response.json();
+    }
   } catch (error) {
-    console.error('Error fetching menu items:', error);
+    console.warn('Backend not available, showing only static items.');
   }
+
+  menuItemsContainer.innerHTML = '';
+
+  // Always show static items, add backend items if available
+  const staticItems = menuCategories.find(cat => cat.title === category.title).items;
+  const dynamicItems = dbMenuItems.filter(item => item.category === category.title);
+
+  const allItems = [...staticItems, ...dynamicItems];
+
+  if (allItems.length === 0) {
+    menuItemsContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No menu items found.</p>';
+    return;
+  }
+
+  allItems.forEach(item => {
+    const itemElement = document.createElement('div');
+    itemElement.className = 'bg-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow';
+    itemElement.innerHTML = `
+      <div class="flex justify-between items-start mb-3">
+        <h3 class="text-xl font-semibold text-gray-900">${item.name}</h3>
+        <span class="text-lg font-medium text-orange-700">₹${item.price}</span>
+      </div>
+      <p class="text-gray-600 text-sm">${item.description}</p>
+      <button class="add-to-cart-btn mt-4 w-full bg-orange-50 text-orange-700 py-2 rounded-md hover:bg-orange-100 transition-colors" 
+        data-id="${item._id || item.id}" 
+        data-name="${item.name}" 
+        data-price="${item.price}">
+        Add to Cart
+      </button>
+    `;
+    menuItemsContainer.appendChild(itemElement);
+  });
+
+  // Add event listeners for Add to Cart buttons
+  document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = button.getAttribute('data-id');
+      const name = button.getAttribute('data-name');
+      const price = parseFloat(button.getAttribute('data-price'));
+      addToCart({ id, name, price });
+    });
+  });
 }
 
 // ================= Cart Functions =================
