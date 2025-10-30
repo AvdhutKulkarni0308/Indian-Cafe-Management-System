@@ -432,7 +432,8 @@ const orderBtn = document.getElementById('order-btn');
 const modalTitle = document.getElementById('modal-title');
 const authForm = document.getElementById('auth-form');
 const authSubmitBtn = document.getElementById('auth-submit-btn');
-const openSignupBtn = document.getElementById('open-signup');
+const authFooterText = document.getElementById('auth-footer-text');
+const authFooterAction = document.getElementById('auth-footer-action');
 let isLoginMode = true;
 
 // Helper for JWT storage
@@ -453,8 +454,19 @@ function isLoggedIn() {
 function openAuthModal(loginMode = true) {
   isLoginMode = loginMode;
   authModal.classList.remove('hidden');
-  modalTitle.textContent = loginMode ? 'LOGIN OR SIGN UP TO START LEARNING' : 'CREATE YOUR ACCOUNT';
+  modalTitle.textContent = loginMode ? 'LOGIN OR SIGN UP TO START ORDERING' : 'CREATE YOUR ACCOUNT';
   authSubmitBtn.textContent = loginMode ? 'Login' : 'Sign Up';
+
+  // Update footer text and action label
+  if (authFooterText && authFooterAction) {
+    if (loginMode) {
+      authFooterText.textContent = '';
+      authFooterAction.textContent = 'Create Account';
+    } else {
+      authFooterText.textContent = 'Already have an account?';
+      authFooterAction.textContent = 'Login';
+    }
+  }
 }
 // Close modal
 function closeAuthModal() {
@@ -472,7 +484,12 @@ orderBtn && orderBtn.addEventListener('click', () => {
   }
 });
 closeAuthModalBtn && closeAuthModalBtn.addEventListener('click', closeAuthModal);
-openSignupBtn && openSignupBtn.addEventListener('click', () => openAuthModal(false));
+// wire footer action button (toggles between create account and login)
+if (authFooterAction) {
+  authFooterAction.addEventListener('click', () => {
+    openAuthModal(!isLoginMode);
+  });
+}
 authModal.addEventListener('click', (e) => {
   if (e.target === authModal) closeAuthModal();
 });

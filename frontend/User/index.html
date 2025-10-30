@@ -300,26 +300,29 @@
     </footer>
   </div>
 
-  <!-- Login/Signup Modal -->
-  <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
-    <div class="bg-white px-8 py-10 rounded-lg shadow-2xl relative" style="max-width:400px;width:90%;text-align:center;background:#fff7ed;">
-      <img src="https://cdn.dribbble.com/userupload/7271180/file/original-c774e61b213b8e0e73a803eab956f813.jpg?resize=752x&vertical=center" alt="Profile" style="width: 72px; height: 72px; object-fit: cover; border-radius: 50%; margin: 0 auto 1.5rem auto;"/>
-      <button id="close-auth-modal" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-2xl">&times;</button>
-      <h2 class="text-2xl font-bold mb-6" id="modal-title">LOGIN OR SIGN UP TO START LEARNING</h2>
-      <form id="auth-form" style="text-align:center;">
-        <div class="mb-4">
-          <label for="auth-email" class="block text-gray-700 mb-2" style="text-align:left;">What's your e-mail?</label>
-          <input type="email" id="auth-email" name="email" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-700" required style="display:block;margin:0 auto;max-width:100%;" />
+  <!-- Login/Signup Modal (coffee-shop themed, dark) -->
+  <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center auth-modal-overlay hidden">
+    <div class="modal-effect"></div>
+    <div class="auth-modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button id="close-auth-modal" class="auth-close" aria-label="Close">&times;</button>
+      <h2 class="auth-title" id="modal-title">LOGIN OR SIGN UP TO START ORDERING</h2>
+
+      <form id="auth-form" class="auth-form">
+        <div class="auth-field">
+          <label for="auth-email" class="auth-label">What's your e-mail?</label>
+          <input type="email" id="auth-email" name="email" placeholder="E-mail" class="auth-input" required />
         </div>
-        <div class="mb-6">
-          <label for="auth-password" class="block text-gray-700 mb-2" style="text-align:left;">Your password?</label>
-          <input type="password" id="auth-password" name="password" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-700" required style="display:block;margin:0 auto;max-width:100%;" />
+        <div class="auth-field">
+          <label for="auth-password" class="auth-label">Your password?</label>
+          <input type="password" id="auth-password" name="password" placeholder="Password" class="auth-input" required />
         </div>
-        <button type="submit" id="auth-submit-btn" class="w-full bg-orange-700 text-white py-3 rounded-lg font-semibold hover:bg-orange-800 mb-4">Login</button>
+
+        <button type="submit" id="auth-submit-btn" class="auth-submit">Login</button>
       </form>
-      <div class="flex justify-between">
-        <button id="open-signup" class="text-orange-700 hover:underline bg-transparent">Create Account</button>
-        <button id="forgot-password" class="text-orange-700 hover:underline bg-transparent">Forgot your password?</button>
+
+      <div class="auth-footer">
+        <div id="auth-footer-text" class="auth-footer-text"></div>
+        <button id="auth-footer-action" class="auth-link">Create Account</button>
       </div>
     </div>
   </div>
