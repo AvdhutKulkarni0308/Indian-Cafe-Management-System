@@ -46,6 +46,7 @@ async function fetchOrders() {
       row.innerHTML = `
         <td>${order._id}</td>
         <td>${order.customer || 'Guest'}</td>
+        <td>${order.tableNumber || '-'}</td>
         <td>₹${order.total}</td>
         <td>
           <button class="view-btn" data-id="${order._id}">View</button>

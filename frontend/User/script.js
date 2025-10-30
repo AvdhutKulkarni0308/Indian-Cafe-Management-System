@@ -264,7 +264,22 @@ function updateCartDisplay() {
           </div>
         `;
       });
-      html += '</div><div class="mt-6 border-t pt-4"><div class="flex justify-between text-lg font-semibold"><span>Total:</span><span>₹' + cart.total.toFixed(2) + '</span></div><button id="checkout-button" class="w-full mt-4 bg-orange-700 text-white py-3 rounded-lg hover:bg-orange-800">Checkout</button></div>';
+      html += '</div>';
+      html += `
+        <div class="mt-6 border-t pt-4">
+          <div class="flex justify-between text-lg font-semibold">
+            <span>Total:</span>
+            <span>₹${cart.total.toFixed(2)}</span>
+          </div>
+          <!-- Table Number Input Field -->
+          <div class="mb-4 mt-6">
+            <label for="table-number-input" class="block mb-2 text-sm font-medium text-gray-700">Enter Table Number</label>
+            <input id="table-number-input" type="text" placeholder="e.g., 5A" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-700" />
+          </div>
+          <!-- End Table Number -->
+          <button id="checkout-button" class="w-full mt-2 bg-orange-700 text-white py-3 rounded-lg hover:bg-orange-800">Checkout</button>
+        </div>
+      `;
       cartContainer.innerHTML = html;
 
       document.querySelectorAll('.quantity-decrease').forEach(btn => {
@@ -273,22 +288,23 @@ function updateCartDisplay() {
           if (item) updateQuantity(item.id, item.quantity - 1);
         });
       });
-
       document.querySelectorAll('.quantity-increase').forEach(btn => {
         btn.addEventListener('click', () => {
           const item = cart.items.find(i => i.id === btn.getAttribute('data-id'));
           if (item) updateQuantity(item.id, item.quantity + 1);
         });
       });
-
       document.querySelectorAll('.remove-item').forEach(btn => {
         btn.addEventListener('click', () => {
           removeItem(btn.getAttribute('data-id'));
         });
       });
-
-      document.getElementById('checkout-button').addEventListener('click', () => {
-        checkout();
+      document.getElementById('checkout-button')?.addEventListener('click', () => {
+        if (!isLoggedIn()) {
+          openAuthModal(true);
+        } else {
+          checkout();
+        }
       });
     }
   }
@@ -298,6 +314,15 @@ function updateCartDisplay() {
 async function checkout() {
   if (cart.items.length === 0) {
     showToast("Your cart is empty!", "error");
+    return;
+  }
+
+  // Get table number value
+  const tableInput = document.getElementById('table-number-input');
+  const tableNumber = tableInput ? tableInput.value.trim() : '';
+  if (!tableNumber) {
+    showToast("Please enter your table number before placing the order!", "error");
+    if (tableInput) tableInput.focus();
     return;
   }
 
@@ -313,6 +338,7 @@ async function checkout() {
         customer: "Guest",
         items: cart.items,
         total: total,
+        tableNumber: tableNumber
       }),
     });
 
@@ -321,6 +347,7 @@ async function checkout() {
     const data = await response.json();
     showToast("Order placed successfully!", "success");
     clearCart();
+    if (tableInput) tableInput.value = '';
     console.log("✅ Order saved:", data);
   } catch (error) {
     console.error("❌ Order failed:", error);
@@ -396,3 +423,141 @@ document.addEventListener('DOMContentLoaded', () => {
   initMenuCategories();
   updateCartDisplay();
 });
+
+// ==================== AUTHENTICATION MODAL ====================
+const authModal = document.getElementById('auth-modal');
+const closeAuthModalBtn = document.getElementById('close-auth-modal');
+const loginBtn = document.getElementById('login-btn');
+const orderBtn = document.getElementById('order-btn');
+const modalTitle = document.getElementById('modal-title');
+const authForm = document.getElementById('auth-form');
+const authSubmitBtn = document.getElementById('auth-submit-btn');
+const openSignupBtn = document.getElementById('open-signup');
+let isLoginMode = true;
+
+// Helper for JWT storage
+function storeToken(token) {
+  localStorage.setItem('jwtToken', token);
+}
+function getToken() {
+  return localStorage.getItem('jwtToken');
+}
+function clearToken() {
+  localStorage.removeItem('jwtToken');
+}
+function isLoggedIn() {
+  return !!getToken();
+}
+
+// Open modal (login or signup)
+function openAuthModal(loginMode = true) {
+  isLoginMode = loginMode;
+  authModal.classList.remove('hidden');
+  modalTitle.textContent = loginMode ? 'LOGIN OR SIGN UP TO START LEARNING' : 'CREATE YOUR ACCOUNT';
+  authSubmitBtn.textContent = loginMode ? 'Login' : 'Sign Up';
+}
+// Close modal
+function closeAuthModal() {
+  authModal.classList.add('hidden');
+  authForm.reset();
+}
+loginBtn && loginBtn.addEventListener('click', () => openAuthModal(true));
+orderBtn && orderBtn.addEventListener('click', () => {
+  if (!isLoggedIn()) {
+    openAuthModal(true);
+  } else {
+    // Scroll to cart/checkout area
+    const contactSection = document.getElementById('contact');
+    if (contactSection) contactSection.scrollIntoView({ behavior: 'smooth' });
+  }
+});
+closeAuthModalBtn && closeAuthModalBtn.addEventListener('click', closeAuthModal);
+openSignupBtn && openSignupBtn.addEventListener('click', () => openAuthModal(false));
+authModal.addEventListener('click', (e) => {
+  if (e.target === authModal) closeAuthModal();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAuthModal(); });
+
+// Login/Signup form submit
+if (authForm) {
+  authForm.onsubmit = async function (event) {
+    event.preventDefault();
+    const email = authForm["auth-email"].value.trim();
+    const password = authForm["auth-password"].value;
+    authSubmitBtn.disabled = true;
+    authSubmitBtn.textContent = isLoginMode ? 'Logging in...' : 'Signing up...';
+    try {
+      const url = isLoginMode ? 'http://localhost:5000/api/login' : 'http://localhost:5000/api/register';
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Auth failed');
+      if (isLoginMode) {
+        storeToken(data.token);
+        showToast('Logged in!', 'success');
+        closeAuthModal();
+      } else {
+        showToast('Signed up! You may now log in.', 'success');
+        openAuthModal(true);
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      authSubmitBtn.disabled = false;
+      authSubmitBtn.textContent = isLoginMode ? 'Login' : 'Sign Up';
+    }
+  }
+}
+
+// ==================== JWT-AUTH ORDERS ====================
+async function checkout() {
+  if (cart.items.length === 0) {
+    showToast("Your cart is empty!", "error");
+    return;
+  }
+  const tableInput = document.getElementById('table-number-input');
+  const tableNumber = tableInput ? tableInput.value.trim() : '';
+  if (!tableNumber) {
+    showToast("Please enter your table number before placing the order!", "error");
+    if (tableInput) tableInput.focus();
+    return;
+  }
+  if (!isLoggedIn()) {
+    openAuthModal(true);
+    return;
+  }
+  const total = cart.total;
+  try {
+    const token = getToken();
+    const response = await fetch("http://localhost:5000/orders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        items: cart.items,
+        total,
+        tableNumber
+      }),
+    });
+    if (!response.ok) throw new Error((await response.json()).error || "Order submission failed");
+    const data = await response.json();
+    showToast("Order placed successfully!", "success");
+    clearCart();
+    if (tableInput) tableInput.value = '';
+    console.log("✅ Order saved:", data);
+  } catch (error) {
+    if (error.message.match(/token|authoriz/i)) {
+      clearToken();
+      showToast("Session expired. Please login again.", "error");
+      openAuthModal(true);
+    } else {
+      console.error("❌ Order failed:", error);
+      showToast("Something went wrong. Try again!", "error");
+    }
+  }
+}

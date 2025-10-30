@@ -30,16 +30,23 @@ const getOrderById = async (req, res) => {
 // POST a new order
 const createOrder = async (req, res) => {
   try {
-    const { customer, items, total } = req.body;
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    const { items, total, tableNumber } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "Order must contain items" });
     }
+    if (!tableNumber || tableNumber.trim() === "") {
+      return res.status(400).json({ error: "Table Number is required" });
+    }
 
     const newOrder = new Order({
-      customer: customer || "Guest",
+      customer: req.user.userId,
       items,
       total,
+      tableNumber,
       createdAt: new Date()
     });
 

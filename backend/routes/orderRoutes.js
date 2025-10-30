@@ -6,10 +6,11 @@ const {
   deleteOrder, 
   createOrder 
 } = require("../controllers/orderController");
+const authMiddleware = require('../middleware/authMiddleware');
 
 router.get("/", getOrders);
-router.post("/", createOrder);
-router.get("/:id", getOrderById); // Add this route
+router.post("/", authMiddleware, createOrder); // Protected route
+router.get("/:id", getOrderById);
 router.delete("/:id", deleteOrder);
 
 module.exports = router;

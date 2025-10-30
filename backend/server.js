@@ -19,9 +19,11 @@ app.use(express.json());
 // Routes
 const orderRoutes = require("./routes/orderRoutes");
 const menuRoutes = require("./routes/menuRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 app.use("/orders", orderRoutes);
 app.use("/menu", menuRoutes);
+app.use("/api", userRoutes);
 
 // Test route
 app.get("/", (req, res) => {

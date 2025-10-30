@@ -16,6 +16,10 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  tableNumber: {
+    type: String,
+    required: true,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Order", orderSchema);

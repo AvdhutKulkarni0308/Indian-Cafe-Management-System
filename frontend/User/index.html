@@ -31,6 +31,7 @@
               </svg>
               <span id="cart-count" class="absolute -top-1 -right-1 bg-orange-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hidden">0</span>
             </button>
+            <button id="login-btn" class="ml-4 bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-orange-800 transition-colors">Login</button>
           </div>
           <div class="md:hidden flex items-center">
             <button id="mobile-menu-button" class="text-gray-800 hover:text-orange-700 flex items-center gap-2">
@@ -106,6 +107,9 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="menu-items">
             <!-- Menu items will be inserted here by JavaScript -->
+          </div>
+          <div class="flex justify-center mt-8">
+            
           </div>
         </div>
       </section>
@@ -294,6 +298,30 @@
         </div>
       </div>
     </footer>
+  </div>
+
+  <!-- Login/Signup Modal -->
+  <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
+    <div class="bg-white px-8 py-10 rounded-lg shadow-2xl relative" style="max-width:400px;width:90%;text-align:center;background:#fff7ed;">
+      <img src="https://cdn.dribbble.com/userupload/7271180/file/original-c774e61b213b8e0e73a803eab956f813.jpg?resize=752x&vertical=center" alt="Profile" style="width: 72px; height: 72px; object-fit: cover; border-radius: 50%; margin: 0 auto 1.5rem auto;"/>
+      <button id="close-auth-modal" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-2xl">&times;</button>
+      <h2 class="text-2xl font-bold mb-6" id="modal-title">LOGIN OR SIGN UP TO START LEARNING</h2>
+      <form id="auth-form" style="text-align:center;">
+        <div class="mb-4">
+          <label for="auth-email" class="block text-gray-700 mb-2" style="text-align:left;">What's your e-mail?</label>
+          <input type="email" id="auth-email" name="email" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-700" required style="display:block;margin:0 auto;max-width:100%;" />
+        </div>
+        <div class="mb-6">
+          <label for="auth-password" class="block text-gray-700 mb-2" style="text-align:left;">Your password?</label>
+          <input type="password" id="auth-password" name="password" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-700" required style="display:block;margin:0 auto;max-width:100%;" />
+        </div>
+        <button type="submit" id="auth-submit-btn" class="w-full bg-orange-700 text-white py-3 rounded-lg font-semibold hover:bg-orange-800 mb-4">Login</button>
+      </form>
+      <div class="flex justify-between">
+        <button id="open-signup" class="text-orange-700 hover:underline bg-transparent">Create Account</button>
+        <button id="forgot-password" class="text-orange-700 hover:underline bg-transparent">Forgot your password?</button>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>

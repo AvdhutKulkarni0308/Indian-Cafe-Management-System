@@ -47,7 +47,7 @@
 .pt-4 { padding-top: 1rem; }
 .pt-8 { padding-top: 2rem; }
 .pb-3 { padding-bottom: 0.75rem; }
-.pb-4 { padding-bottom: 1rem; }
+.pb-4 { padding-bottom: 0.5rem; }
 
 /* Flexbox */
 .flex { display: flex; }
@@ -68,7 +68,7 @@
 .space-x-8 > * + * { margin-left: 2rem; }
 .space-y-1 > * + * { margin-top: 0.25rem; }
 .space-y-3 > * + * { margin-top: 0.75rem; }
-.space-y-4 > * + * { margin-top: 1rem; }
+.space-y-4 > * + * { margin-top: 0.5rem; } /* was 1rem, reduced for tighter cart */
 .space-y-8 > * + * { margin-top: 2rem; }
 
 /* Grid */
