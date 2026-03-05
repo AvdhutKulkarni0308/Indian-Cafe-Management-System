@@ -5,10 +5,11 @@ const getOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .sort({ createdAt: -1 })
-      .select('-__v'); // Exclude version key
+      .populate("customer", "email") // Joins User to get email
+      .select("-__v");
     res.json(orders);
   } catch (err) {
-    console.error('Error fetching orders:', err);
+    console.error("Error fetching orders:", err);
     res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
@@ -16,13 +17,15 @@ const getOrders = async (req, res) => {
 // GET single order by ID
 const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).select('-__v');
+    const order = await Order.findById(req.params.id)
+      .populate("customer", "email") // Joins User to get email
+      .select("-__v");
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
     res.json(order);
   } catch (err) {
-    console.error('Error fetching order:', err);
+    console.error("Error fetching order:", err);
     res.status(500).json({ error: "Failed to fetch order" });
   }
 };
@@ -31,7 +34,7 @@ const getOrderById = async (req, res) => {
 const createOrder = async (req, res) => {
   try {
     if (!req.user || !req.user.userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      return res.status(401).json({ error: "User not authenticated" });
     }
     const { items, total, tableNumber } = req.body;
 
@@ -47,13 +50,13 @@ const createOrder = async (req, res) => {
       items,
       total,
       tableNumber,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     const savedOrder = await newOrder.save();
     res.status(201).json(savedOrder);
   } catch (err) {
-    console.error('Error creating order:', err);
+    console.error("Error creating order:", err);
     res.status(400).json({ error: "Failed to create order" });
   }
 };
@@ -67,7 +70,7 @@ const deleteOrder = async (req, res) => {
     }
     res.json({ message: "Order deleted successfully" });
   } catch (err) {
-    console.error('Error deleting order:', err);
+    console.error("Error deleting order:", err);
     res.status(400).json({ error: "Failed to delete order" });
   }
 };

@@ -3,72 +3,149 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chai Theory Admin Panel</title>
+  <title>Chai Theory — Admin</title>
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
-  <div class="admin-container">
 
-    <!-- 🔐 Login Section -->
-    <section id="login-section" class="login-section">
-      <h1>Admin Login</h1>
-      <input type="text" id="username" placeholder="Username" />
-      <input type="password" id="password" placeholder="Password" />
-      <button id="login-btn">Login</button>
-      <p id="login-error" class="error-msg"></p>
-    </section>
+  <!-- ==================== LOGIN ==================== -->
+  <div id="login-section" class="login-wrapper">
+    <div class="login-card">
+      <div class="brand">
+        <img src="logo.png" alt="Chai Theory Logo" style="height:56px;width:auto;" />
+        <span class="brand-name">Chai Theory</span>
+      </div>
+      <h2>Admin Sign In</h2>
+      <p class="subtitle">Enter your admin credentials to continue</p>
 
-    <!-- 📊 Dashboard Section -->
-    <section id="dashboard-section" class="dashboard-section hidden">
-      <div class="dashboard-header">
-        <h1>Welcome, Admin</h1>
-        <button id="logout-btn" class="logout-btn">Logout</button>
+      <div class="form-group">
+        <label for="username">Email address</label>
+        <input type="email" id="username" placeholder="admin@chaitheory.in" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
       </div>
 
-      <!-- 📋 Orders Table -->
-      <section class="orders-section">
-        <h2>Orders</h2>
-        <table id="orders-table">
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Customer</th>
-              <th>Table No</th>
-              <th>Total</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="orders-body">
-            <!-- Orders will be loaded here -->
-          </tbody>
-        </table>
-      </section>
+      <button id="login-btn" class="btn btn-primary btn-full">Sign In</button>
+      <p id="login-error" class="error-msg"></p>
+    </div>
+  </div>
 
-      <!-- 🍽 Menu Manager -->
-      <section class="menu-section">
-        <h2>Menu Items</h2>
+  <!-- ==================== DASHBOARD ==================== -->
+  <div id="dashboard-section" class="admin-layout hidden">
 
-        <form id="menu-form">
-          <input type="text" id="menu-name" placeholder="Item name" required />
-          <label for="menu-category">Category</label>
-          <select id="menu-category" required>
-            <option value="">Select Category</option>
-            <option value="Hot Beverages">Hot Beverages</option>
-            <option value="Cold Beverages">Cold Beverages</option>
-            <option value="Snacks & Quick Bites">Snacks & Quick Bites</option>
-            <option value="Desserts">Desserts</option>
-          </select>
-          <input type="number" id="menu-price" placeholder="Price (₹)" required />
-          <textarea id="menu-description" placeholder="Description" required></textarea>
-          <button type="submit" id="menu-submit">Add Item</button>
-          <button type="button" id="menu-cancel" class="hidden">Cancel</button>
-        </form>
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <img src="logo.png" alt="Chai Theory Logo" style="height:44px;width:auto;" />
+        Chai Theory &nbsp;<span style="color:var(--gray-400);font-weight:400;">Admin</span>
+      </div>
+      <div class="topbar-right">
+        <span class="admin-badge">● Admin</span>
+        <button id="logout-btn" class="btn btn-ghost btn-sm">Logout</button>
+      </div>
+    </header>
 
-        <div id="menu-list" class="menu-list">
-          <!-- Menu items will load here -->
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="orders">📋 Orders</button>
+      <button class="tab-btn" data-tab="menu">🍽 Menu Items</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- ===== ORDERS TAB ===== -->
+      <div id="tab-orders" class="tab-panel active">
+        <div class="section-header">
+          <span class="section-title">Live Orders</span>
+          <button id="refresh-orders-btn" class="btn btn-ghost btn-sm">↻ Refresh</button>
         </div>
-      </section>
-    </section>
+
+        <div class="table-card">
+          <table id="orders-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Table</th>
+                <th>Total</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body">
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <p>Loading orders…</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== MENU TAB ===== -->
+      <div id="tab-menu" class="tab-panel">
+        <div class="menu-grid">
+
+          <!-- Add / Edit Form -->
+          <div class="form-card">
+            <h3 id="form-heading">➕ Add Menu Item</h3>
+            <form id="menu-form">
+              <div class="form-group">
+                <label for="menu-name">Item Name</label>
+                <input type="text" id="menu-name" placeholder="e.g. Masala Chai" required />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="menu-category">Category</label>
+                  <select id="menu-category" required>
+                    <option value="">Select category</option>
+                    <option value="Hot Beverages">Hot Beverages</option>
+                    <option value="Cold Beverages">Cold Beverages</option>
+                    <option value="Snacks &amp; Quick Bites">Snacks &amp; Quick Bites</option>
+                    <option value="Desserts">Desserts</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="menu-price">Price (₹)</label>
+                  <input type="number" id="menu-price" placeholder="0" min="1" required />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="menu-description">Description</label>
+                <textarea id="menu-description" placeholder="Short description…" required></textarea>
+              </div>
+              <div class="form-actions">
+                <button type="submit" id="menu-submit" class="btn btn-primary">Add Item</button>
+                <button type="button" id="menu-cancel" class="btn btn-ghost hidden">Cancel</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Menu Item List -->
+          <div class="menu-list-panel">
+            <div class="panel-header">
+              <span>Current Menu</span>
+              <span id="menu-count" style="font-size:0.775rem;color:var(--gray-400);font-weight:400;"></span>
+            </div>
+            <div id="menu-list">
+              <div class="empty-state">
+                <div class="empty-icon">🍽</div>
+                <p>Loading menu items…</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
   </div>
 
   <script src="admin.js"></script>

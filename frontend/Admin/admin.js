@@ -1,7 +1,29 @@
-// ===== Mock Login =====
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "chai123";
+// ===== Config =====
+const API_BASE = "http://localhost:5000";
+const ADMIN_TOKEN_KEY = "adminToken";
 
+// ===== Auth Helpers =====
+function storeAdminToken(t) {
+  localStorage.setItem(ADMIN_TOKEN_KEY, t);
+}
+function getAdminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_KEY);
+}
+function clearAdminToken() {
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+}
+function isAdminLoggedIn() {
+  return !!getAdminToken();
+}
+
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${getAdminToken()}`,
+  };
+}
+
+// ===== DOM Refs =====
 const loginSection = document.getElementById("login-section");
 const dashboardSection = document.getElementById("dashboard-section");
 const usernameInput = document.getElementById("username");
@@ -10,189 +32,268 @@ const loginBtn = document.getElementById("login-btn");
 const loginError = document.getElementById("login-error");
 const logoutBtn = document.getElementById("logout-btn");
 
-// ===== Login Logic =====
-loginBtn.addEventListener("click", () => {
-  const user = usernameInput.value;
+// ===== Login =====
+loginBtn.addEventListener("click", async () => {
+  const email = usernameInput.value.trim();
   const pass = passwordInput.value;
-  if (user === ADMIN_USERNAME && pass === ADMIN_PASSWORD) {
-    loginSection.classList.add("hidden");
-    dashboardSection.classList.remove("hidden");
-    loginError.textContent = "";
-    fetchOrders(); // Add this line to load orders when logging in
-    renderMenu();
-  } else {
-    loginError.textContent = "Invalid credentials!";
+
+  if (!email || !pass) {
+    loginError.textContent = "Please enter email and password.";
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = "Signing in…";
+  loginError.textContent = "";
+
+  try {
+    const res = await fetch(`${API_BASE}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: pass }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      loginError.textContent = data.error || "Login failed.";
+      return;
+    }
+    if (data.role !== "admin") {
+      loginError.textContent = "Access denied. Admin accounts only.";
+      return;
+    }
+
+    storeAdminToken(data.token);
+    showDashboard();
+  } catch (err) {
+    loginError.textContent = "Server error. Is the backend running?";
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Sign In";
   }
 });
 
+// Allow Enter key to submit login
+[usernameInput, passwordInput].forEach((el) => {
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loginBtn.click();
+  });
+});
+
+// ===== Logout =====
 logoutBtn.addEventListener("click", () => {
+  clearAdminToken();
   dashboardSection.classList.add("hidden");
   loginSection.classList.remove("hidden");
   usernameInput.value = "";
   passwordInput.value = "";
+  loginError.textContent = "";
 });
+
+// ===== Session Handling =====
+function showDashboard() {
+  loginSection.classList.add("hidden");
+  dashboardSection.classList.remove("hidden");
+  fetchOrders();
+  renderMenu();
+}
+
+function handleAuthError(res) {
+  if (res.status === 401 || res.status === 403) {
+    clearAdminToken();
+    dashboardSection.classList.add("hidden");
+    loginSection.classList.remove("hidden");
+    loginError.textContent = "Session expired. Please log in again.";
+  }
+}
+
+// Auto-restore session on page load
+if (isAdminLoggedIn()) showDashboard();
+
+// ===== Tab Navigation =====
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    // Update buttons
+    document
+      .querySelectorAll(".tab-btn")
+      .forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    // Update panels
+    document
+      .querySelectorAll(".tab-panel")
+      .forEach((p) => p.classList.remove("active"));
+    document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+  });
+});
+
+// Refresh button
+document
+  .getElementById("refresh-orders-btn")
+  ?.addEventListener("click", fetchOrders);
 
 // ===== Orders =====
 const ordersBody = document.getElementById("orders-body");
 
 async function fetchOrders() {
+  ordersBody.innerHTML = `
+    <tr><td colspan="6">
+      <div class="empty-state"><div class="empty-icon">⏳</div><p>Loading orders…</p></div>
+    </td></tr>`;
+
   try {
-    const response = await fetch('http://localhost:5000/orders');
+    const response = await fetch(`${API_BASE}/orders`, {
+      headers: authHeaders(),
+    });
+    if (!response.ok) {
+      handleAuthError(response);
+      throw new Error();
+    }
+
     const orders = await response.json();
-    
-    ordersBody.innerHTML = '';
-    orders.forEach(order => {
-      const row = document.createElement('tr');
+    ordersBody.innerHTML = "";
+
+    if (orders.length === 0) {
+      ordersBody.innerHTML = `
+        <tr><td colspan="6">
+          <div class="empty-state"><div class="empty-icon">📋</div><p>No orders yet.</p></div>
+        </td></tr>`;
+      return;
+    }
+
+    orders.forEach((order) => {
+      const date = new Date(order.createdAt).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${order._id}</td>
-        <td>${order.customer || 'Guest'}</td>
-        <td>${order.tableNumber || '-'}</td>
-        <td>₹${order.total}</td>
+        <td><span class="order-id" title="${order._id}">${order._id.slice(-8)}</span></td>
+        <td>${order.customer?.email || "Guest"}</td>
+        <td><span class="table-no">${order.tableNumber || "–"}</span></td>
+        <td><span class="amount">₹${order.total}</span></td>
+        <td style="color:var(--gray-400);font-size:0.8rem;">${date}</td>
         <td>
-          <button class="view-btn" data-id="${order._id}">View</button>
-          <button class="delete-btn" data-id="${order._id}">Delete</button>
-        </td>
-      `;
+          <div class="action-group">
+            <button class="btn btn-info btn-sm view-btn" data-id="${order._id}">View</button>
+            <button class="btn btn-danger btn-sm delete-btn" data-id="${order._id}">Delete</button>
+          </div>
+        </td>`;
       ordersBody.appendChild(row);
     });
 
-    // Add event listeners after creating the buttons
-    document.querySelectorAll('.view-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const id = e.target.dataset.id;
-        viewOrder(id);
-      });
-    });
-
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = e.target.dataset.id;
-        await deleteOrder(id);
-      });
-    });
+    document
+      .querySelectorAll(".view-btn")
+      .forEach((btn) =>
+        btn.addEventListener("click", () => viewOrder(btn.dataset.id)),
+      );
+    document
+      .querySelectorAll(".delete-btn")
+      .forEach((btn) =>
+        btn.addEventListener("click", () => deleteOrder(btn.dataset.id)),
+      );
   } catch (err) {
-    console.error('Failed to fetch orders:', err);
+    ordersBody.innerHTML = `
+      <tr><td colspan="6">
+        <div class="empty-state"><p>Failed to load orders.</p></div>
+      </td></tr>`;
   }
 }
 
 async function deleteOrder(id) {
+  if (!confirm("Delete this order? This cannot be undone.")) return;
   try {
-    const response = await fetch(`http://localhost:5000/orders/${id}`, {
-      method: 'DELETE'
+    const res = await fetch(`${API_BASE}/orders/${id}`, {
+      method: "DELETE",
+      headers: authHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to delete order');
+    if (!res.ok) {
+      handleAuthError(res);
+      throw new Error();
     }
-
-    // Refresh the orders list after successful deletion
-    await fetchOrders();
-  } catch (err) {
-    console.error('Error deleting order:', err);
-    alert('Failed to delete order');
+    fetchOrders();
+  } catch {
+    alert("Failed to delete order.");
   }
 }
 
 function viewOrder(id) {
-  fetch(`http://localhost:5000/orders/${id}`)
-    .then(response => response.json())
-    .then(order => {
-      // Create overlay
-      const overlay = document.createElement('div');
-      overlay.className = 'modal-overlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-      `;
-
-      // Create modal
-      const modal = document.createElement('div');
-      modal.className = 'modal-content';
-      modal.style.cssText = `
-        background: white;
-        padding: 2rem;
-        border-radius: 8px;
-        max-width: 500px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-      `;
-
-      // Format order date
-      const orderDate = new Date(order.createdAt).toLocaleString('en-IN', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
+  fetch(`${API_BASE}/orders/${id}`, { headers: authHeaders() })
+    .then((r) => {
+      if (!r.ok) {
+        handleAuthError(r);
+        throw new Error();
+      }
+      return r.json();
+    })
+    .then((order) => {
+      const date = new Date(order.createdAt).toLocaleString("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
       });
+      const overlay = document.createElement("div");
+      overlay.style.cssText = `
+        position:fixed;inset:0;background:rgba(0,0,0,.45);
+        display:flex;align-items:center;justify-content:center;z-index:999;`;
 
-      // Format order items as table
-      const itemsTable = `
-        <table style="width: 100%; margin-top: 1rem; border-collapse: collapse;">
+      const modal = document.createElement("div");
+      modal.style.cssText = `
+        background:#fff;border-radius:12px;padding:1.75rem;
+        max-width:500px;width:90%;max-height:85vh;overflow-y:auto;
+        box-shadow:0 20px 60px rgba(0,0,0,.2);`;
+
+      modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:1.25rem;">
+          <div>
+            <h3 style="font-size:1.05rem;font-weight:700;color:#111827;margin:0 0 .25rem;">Order Details</h3>
+            <p style="color:#9ca3af;font-size:.8rem;margin:0;">${date}</p>
+          </div>
+          <button onclick="this.closest('div[style]').remove()"
+            style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6b7280;line-height:1;">×</button>
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:.875rem 1rem;margin-bottom:1.25rem;font-size:.875rem;">
+          <p style="margin:.2rem 0;"><strong>Order ID:</strong> <code style="color:#6b7280;font-size:.8rem;">${order._id}</code></p>
+          <p style="margin:.2rem 0;"><strong>Customer:</strong> ${order.customer?.email || "Guest"}</p>
+          <p style="margin:.2rem 0;"><strong>Table:</strong> ${order.tableNumber || "–"}</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
           <thead>
-            <tr style="background: #f3f4f6;">
-              <th style="text-align: left; padding: 0.5rem;">Item</th>
-              <th style="text-align: center; padding: 0.5rem;">Qty</th>
-              <th style="text-align: right; padding: 0.5rem;">Price</th>
-              <th style="text-align: right; padding: 0.5rem;">Total</th>
+            <tr style="background:#f3f4f6;border-radius:6px;">
+              <th style="padding:.6rem .75rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">Item</th>
+              <th style="padding:.6rem .75rem;text-align:center;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">Qty</th>
+              <th style="padding:.6rem .75rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">Price</th>
+              <th style="padding:.6rem .75rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">Total</th>
             </tr>
           </thead>
           <tbody>
-            ${order.items.map(item => `
-              <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 0.5rem;">${item.name}</td>
-                <td style="text-align: center; padding: 0.5rem;">${item.quantity}</td>
-                <td style="text-align: right; padding: 0.5rem;">₹${item.price}</td>
-                <td style="text-align: right; padding: 0.5rem;">₹${item.price * item.quantity}</td>
-              </tr>
-            `).join('')}
-            <tr style="font-weight: bold; background: #f9fafb;">
-              <td colspan="3" style="text-align: right; padding: 0.5rem;">Grand Total:</td>
-              <td style="text-align: right; padding: 0.5rem;">₹${order.total}</td>
-            </tr>
+            ${order.items
+              .map(
+                (i) => `
+              <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:.6rem .75rem;">${i.name}</td>
+                <td style="padding:.6rem .75rem;text-align:center;">${i.quantity}</td>
+                <td style="padding:.6rem .75rem;text-align:right;">₹${i.price}</td>
+                <td style="padding:.6rem .75rem;text-align:right;">₹${i.price * i.quantity}</td>
+              </tr>`,
+              )
+              .join("")}
           </tbody>
-        </table>
-      `;
+          <tfoot>
+            <tr style="font-weight:700;border-top:2px solid #e5e7eb;">
+              <td colspan="3" style="padding:.75rem;text-align:right;color:#111827;">Grand Total</td>
+              <td style="padding:.75rem;text-align:right;color:#b45309;">₹${order.total}</td>
+            </tr>
+          </tfoot>
+        </table>`;
 
-      // Populate modal content
-      modal.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
-          <div>
-            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: #111827;">Order Details</h3>
-            <p style="margin: 0; color: #6b7280; font-size: 0.875rem;">${orderDate}</p>
-          </div>
-          <button onclick="this.closest('.modal-overlay').remove()" 
-                  style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #374151;">&times;</button>
-        </div>
-        <div style="margin-bottom: 1.5rem;">
-          <p style="margin: 0.25rem 0;"><strong>Order ID:</strong> <span style="color: #6b7280; font-family: monospace;">${order._id}</span></p>
-          <p style="margin: 0.25rem 0;"><strong>Customer:</strong> ${order.customer || 'Guest'}</p>
-        </div>
-        <div>
-          <h4 style="margin: 0 0 0.5rem 0; color: #111827;">Order Items</h4>
-          ${itemsTable}
-        </div>
-      `;
-
-      // Add modal to overlay
       overlay.appendChild(modal);
       document.body.appendChild(overlay);
-
-      // Close on outside click
-      overlay.addEventListener('click', (e) => {
+      overlay.addEventListener("click", (e) => {
         if (e.target === overlay) overlay.remove();
       });
     })
-    .catch(err => {
-      console.error('Error viewing order:', err);
-      alert('Failed to load order details');
-    });
+    .catch(() => alert("Failed to load order details."));
 }
 
 // ===== Menu Items =====
@@ -204,194 +305,183 @@ const priceInput = document.getElementById("menu-price");
 const descInput = document.getElementById("menu-description");
 const menuSubmitBtn = document.getElementById("menu-submit");
 const menuCancelBtn = document.getElementById("menu-cancel");
+const formHeading = document.getElementById("form-heading");
+const menuCount = document.getElementById("menu-count");
 
-let menuItems = []; // Will hold data from backend
+let menuItems = [];
+
+// Category badge helper
+function catBadge(cat) {
+  const map = {
+    "Hot Beverages": "cat-hot",
+    "Cold Beverages": "cat-cold",
+    "Snacks & Quick Bites": "cat-snack",
+    Desserts: "cat-dessert",
+  };
+  const cls = map[cat] || "cat-other";
+  return `<span class="cat-badge ${cls}">${cat}</span>`;
+}
 
 async function renderMenu() {
+  menuList.innerHTML =
+    '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
   try {
-    const res = await fetch("http://localhost:5000/menu"); // Update if needed
+    const res = await fetch(`${API_BASE}/menu`);
     menuItems = await res.json();
+    menuCount.textContent = `${menuItems.length} items`;
     drawMenuItems();
-  } catch (err) {
-    console.error("Failed to fetch menu items:", err);
+  } catch {
+    menuList.innerHTML =
+      '<div class="empty-state"><p>Failed to load menu.</p></div>';
   }
 }
 
 function drawMenuItems() {
+  if (menuItems.length === 0) {
+    menuList.innerHTML =
+      '<div class="empty-state"><div class="empty-icon">🍽</div><p>No items yet.</p></div>';
+    return;
+  }
   menuList.innerHTML = "";
-  menuItems.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "menu-item";
-    div.innerHTML = `
-      <h3>${item.name}</h3>
-      <p><strong>Category:</strong> ${item.category}</p>
-      <p><strong>Price:</strong> ₹${item.price}</p>
-      <p>${item.description}</p>
-      <div class="menu-item-actions">
-        <button class="edit-btn" data-id="${item._id}">Edit</button>
-        <button class="delete-btn" data-id="${item._id}">Delete</button>
+  menuItems.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "menu-item-row";
+    row.innerHTML = `
+      <div class="menu-item-info">
+        <h4>${item.name}</h4>
+        <div class="meta">${catBadge(item.category)}</div>
       </div>
-    `;
-    menuList.appendChild(div);
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span class="menu-item-price">₹${item.price}</span>
+        <button class="btn btn-info btn-sm edit-btn" data-id="${item._id}">Edit</button>
+        <button class="btn btn-danger btn-sm delete-item-btn" data-id="${item._id}">Delete</button>
+      </div>`;
+    menuList.appendChild(row);
   });
 
-  // Add event listeners for buttons
-  document.querySelectorAll(".edit-btn").forEach(button => {
-    button.addEventListener("click", () => {
-      const id = button.getAttribute("data-id");
-      editItem(id);
-    });
-  });
-
-  document.querySelectorAll(".delete-btn").forEach(button => {
-    button.addEventListener("click", () => {
-      const id = button.getAttribute("data-id");
-      deleteItem(id);
-    });
-  });
+  document
+    .querySelectorAll(".edit-btn")
+    .forEach((btn) =>
+      btn.addEventListener("click", () => editItem(btn.dataset.id)),
+    );
+  document
+    .querySelectorAll(".delete-item-btn")
+    .forEach((btn) =>
+      btn.addEventListener("click", () => deleteItem(btn.dataset.id)),
+    );
 }
 
+// Add item
 menuForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-
-  // Validate category selection
   if (!categoryInput.value) {
     alert("Please select a category");
     return;
   }
 
   const newItem = {
-    name: nameInput.value,
+    name: nameInput.value.trim(),
     category: categoryInput.value,
     price: parseFloat(priceInput.value),
-    description: descInput.value,
-    isCustom: true
+    description: descInput.value.trim(),
   };
 
+  menuSubmitBtn.disabled = true;
   try {
-    const response = await fetch("http://localhost:5000/menu", {
+    const res = await fetch(`${API_BASE}/menu`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newItem)
+      headers: authHeaders(),
+      body: JSON.stringify(newItem),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to add item');
+    if (!res.ok) {
+      handleAuthError(res);
+      throw new Error();
     }
-
-    // Broadcast the menu update event
-    const broadcastChannel = new BroadcastChannel('menu-update');
-    broadcastChannel.postMessage({ type: 'UPDATE_MENU' });
-
-    menuForm.reset();
+    new BroadcastChannel("menu-update").postMessage({ type: "UPDATE_MENU" });
+    resetForm();
     renderMenu();
-  } catch (err) {
-    console.error("Failed to add item:", err);
-    alert("Failed to add menu item");
+  } catch {
+    alert("Failed to add menu item.");
+  } finally {
+    menuSubmitBtn.disabled = false;
   }
 });
 
 async function deleteItem(id) {
-  if (confirm("Delete this menu item?")) {
-    try {
-      const response = await fetch(`http://localhost:5000/menu/${id}`, { 
-        method: "DELETE" 
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete item');
-      }
-
-      // Broadcast the menu update event
-      const broadcastChannel = new BroadcastChannel('menu-update');
-      broadcastChannel.postMessage({ type: 'UPDATE_MENU' });
-
-      renderMenu();
-    } catch (err) {
-      console.error("Failed to delete item:", err);
-      alert("Failed to delete menu item");
+  if (!confirm("Delete this menu item?")) return;
+  try {
+    const res = await fetch(`${API_BASE}/menu/${id}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      handleAuthError(res);
+      throw new Error();
     }
+    new BroadcastChannel("menu-update").postMessage({ type: "UPDATE_MENU" });
+    renderMenu();
+  } catch {
+    alert("Failed to delete menu item.");
   }
 }
 
-async function editItem(id) {
-  const item = menuItems.find(i => i._id === id);
+function editItem(id) {
+  const item = menuItems.find((i) => i._id === id);
   if (!item) return;
 
-  // Populate form with item data
   nameInput.value = item.name;
   categoryInput.value = item.category;
   priceInput.value = item.price;
   descInput.value = item.description;
 
-  // Change form state to edit mode
+  formHeading.textContent = "✏️ Edit Menu Item";
   menuSubmitBtn.textContent = "Update Item";
   menuCancelBtn.classList.remove("hidden");
-  menuForm.dataset.editId = id;
 
-  // Scroll form into view
-  menuForm.scrollIntoView({ behavior: 'smooth' });
+  // Switch to menu tab
+  document.querySelector('[data-tab="menu"]').click();
+  menuForm.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  // Remove existing submit handler
-  menuForm.removeEventListener("submit", handleAdd);
-
-  // Add new submit handler for edit
   menuForm.onsubmit = async (e) => {
     e.preventDefault();
-    
     if (!categoryInput.value) {
       alert("Please select a category");
       return;
     }
-
     const updated = {
-      name: nameInput.value,
+      name: nameInput.value.trim(),
       category: categoryInput.value,
       price: parseFloat(priceInput.value),
-      description: descInput.value
+      description: descInput.value.trim(),
     };
-
+    menuSubmitBtn.disabled = true;
     try {
-      const response = await fetch(`http://localhost:5000/menu/${id}`, {
+      const res = await fetch(`${API_BASE}/menu/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated)
+        headers: authHeaders(),
+        body: JSON.stringify(updated),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update item');
+      if (!res.ok) {
+        handleAuthError(res);
+        throw new Error();
       }
-
-      // Reset form
+      new BroadcastChannel("menu-update").postMessage({ type: "UPDATE_MENU" });
       resetForm();
-      
-      // Broadcast update
-      const broadcastChannel = new BroadcastChannel('menu-update');
-      broadcastChannel.postMessage({ type: 'UPDATE_MENU' });
-
-      // Refresh menu list
-      await renderMenu();
-
-    } catch (err) {
-      console.error("Failed to update item:", err);
-      alert("Failed to update menu item");
+      renderMenu();
+    } catch {
+      alert("Failed to update menu item.");
+    } finally {
+      menuSubmitBtn.disabled = false;
     }
   };
 }
 
-// Add cancel button handler
 menuCancelBtn.addEventListener("click", resetForm);
 
-// Function to reset form state
 function resetForm() {
   menuForm.reset();
+  menuForm.onsubmit = null;
+  formHeading.textContent = "➕ Add Menu Item";
   menuSubmitBtn.textContent = "Add Item";
   menuCancelBtn.classList.add("hidden");
-  menuForm.dataset.editId = "";
-  menuForm.onsubmit = handleAdd;
-}
-
-function handleAdd(e) {
-  e.preventDefault();
-  // handled in menuForm listener above
 }
