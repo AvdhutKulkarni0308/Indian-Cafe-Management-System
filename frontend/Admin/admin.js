@@ -1,5 +1,5 @@
 // ===== Config =====
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://indian-cafe-management-system.onrender.com";
 const ADMIN_TOKEN_KEY = "adminToken";
 
 // ===== Auth Helpers =====

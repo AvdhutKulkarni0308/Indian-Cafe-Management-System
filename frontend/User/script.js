@@ -236,7 +236,7 @@ function initMenuCategories() {
 async function displayMenuItems(category) {
   let dbMenuItems = [];
   try {
-    const response = await fetch("http://localhost:5000/menu");
+    const response = await fetch("https://indian-cafe-management-system.onrender.com/menu");
     if (response.ok) {
       dbMenuItems = await response.json();
     }
@@ -562,8 +562,8 @@ if (authForm) {
     authSubmitBtn.textContent = isLoginMode ? "Logging in..." : "Signing up...";
     try {
       const url = isLoginMode
-        ? "http://localhost:5000/api/login"
-        : "http://localhost:5000/api/register";
+        ? "https://indian-cafe-management-system.onrender.com/api/login"
+        : "https://indian-cafe-management-system.onrender.com/api/register";
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -612,7 +612,7 @@ async function checkout() {
   const total = cart.total;
   try {
     const token = getToken();
-    const response = await fetch("http://localhost:5000/orders", {
+    const response = await fetch("https://indian-cafe-management-system.onrender.com/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
